@@ -5,13 +5,15 @@ defmodule DeferredConfigTest do
   @app :lazy_cfg_test_appname
   
   defmodule MyMod do
-    def get_my_key(""<>bin), do: "your key is 1234. write it down."
+    def get_my_key(""<>_bin), do: "your key is 1234. write it down."
   end
   
   setup do
     delete_all_env(@app)
     # give each test a fake env that looks like this
     env = %{"PORT" => "4000"}
+    System.put_env(env)
+
     system_transform = fn
       {:system, k}            -> Map.get(env, k)
       {:system, k, {m, f}}    -> apply m, f, [Map.get(env, k)]
@@ -27,6 +29,16 @@ defmodule DeferredConfigTest do
     [transforms: transforms,
      system_transform: system_transform]
   end
+
+  test "{:system, var}" do
+    assert "4000" == DeferredConfig.get_system_tuple({:system, "PORT"})
+  end
+
+  test "{:system, var, default}" do
+    assert "4000" == DeferredConfig.get_system_tuple({:system, "PORT", "5000"})
+    assert "5000" == DeferredConfig.get_system_tuple({:system, "FAIL", "5000"})
+  end
+
 
   test "system tuples support", %{system_transform: transform} do
     cfg = [
@@ -71,14 +83,14 @@ defmodule DeferredConfigTest do
     actual = readme_example
     |> DeferredConfig.transform_cfg(transforms)
     
-    assert "your key is"<>_ = actual[:key]
+    assert "your key is" <> _ = actual[:key]
     assert actual[:http][:port] == 4000
   end
       
   defp delete_all_env(app) do
     app
     |> Application.get_all_env
-    |> Enum.each(fn {k, v} ->
+    |> Enum.each(fn {k, _v} ->
       Application.delete_env( app, k )
     end)
   end

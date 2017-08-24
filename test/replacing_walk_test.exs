@@ -24,8 +24,8 @@ defmodule EnvTest do
   end
 
   test "maps" do
-    data     = %{ :a => 1, :b => 2, :a => :a }
-    expected = %{ :balls => 1, :b => 2, :balls => :balls}  
+    data     = %{ :a => :a, :b => 2 }
+    expected = %{ :b => 2, :balls => :balls }  
     actual = data
     |> RW.walk(&recognize_atom_a/1, &transform_to_balls/1) 
     assert expected == actual

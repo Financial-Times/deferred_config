@@ -28,12 +28,18 @@ defmodule DeferredConfig do
         # string from env var |> integer; `nil` if missing.
         port2: {:system, "PORT", {String, :to_integer}},
         
+        # string from env var |> Path.join("/bar"); `nil` if missing.
+        port3: {:system, "URL", {Path, :join, ["/bar"]}},
+
         # string from env var, or "4000" as default.
-        port3: {:system, "PORT", "4000"},
+        port4: {:system, "PORT", "4000"},
         
         # converts env var to integer, or 4000 as default.
-        port4: {:system, "PORT", 4000, {String, :to_integer}}
+        port5: {:system, "PORT", 4000, {String, :to_integer}}
   
+        # converts env var |> Path.join("/bar"), using "http://localhost" as default.
+        port6: {:system, "URL", "http://localhost", {Path, :join, ["/foo"]}}
+
   **Accessing config does not change.**
   
   Since you can use arbitrary transformation functions,
@@ -155,7 +161,9 @@ defmodule DeferredConfig do
   - `{:system, "VAR"}`
   - `{:system, "VAR", default_value}`
   - `{:system, "VAR", {String, :to_integer}}`
+  - `{:system, "VAR", {Path, :join, ["/bar"]}}`
   - `{:system, "VAR", default_value, {String, :to_integer}}`
+  - `{:system, "VAR", default_value, {Path, :join, ["/bar"]}}`
   Returns `true` when it matches one, `false` otherwise.
   """
   def recognize_system_tuple({:system, ""<>_k}),           do: true
@@ -172,9 +180,15 @@ defmodule DeferredConfig do
   def get_system_tuple({:system, k, {m, f}}) do
     apply m, f, [ System.get_env(k) ]
   end
+  def get_system_tuple({:system, k, {m, f, a}}) when is_list(a) do
+    apply m, f, [ System.get_env(k) | a ]
+  end
   def get_system_tuple({:system, k, d}), do: System.get_env(k) || d
   def get_system_tuple({:system, k, d, {m, f}}) do
     (val = System.get_env k) && apply(m, f, [val]) || d
+  end
+  def get_system_tuple({:system, k, d, {m, f, a}}) when is_list(a) do
+    (val = System.get_env(k) || d) && apply(m, f, [val | a])
   end
   def get_system_tuple(t), do: throw "Could not fetch: #{inspect t}"
 
